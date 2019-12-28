@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-#include <FlexCAN.h>
+#include <FlexCAN_T4.h>
 
 struct FILTER {  //should be 10 bytes
 	uint32_t id;
@@ -44,7 +44,7 @@ struct FILTER {  //should be 10 bytes
 
 enum FILEOUTPUTTYPE
 {
-	NONE = 0,
+	OFF = 0,
 	BINARYFILE = 1,
 	GVRET = 2,
 	CRTD = 3
@@ -57,8 +57,8 @@ struct EEPROMSettings { //Must stay under 256 - currently somewhere around 222
 	uint32_t CAN1Speed;
 	boolean CAN0_Enabled;
 	boolean CAN1_Enabled;
-	FILTER CAN0Filters[NUM_MAILBOXES]; // filters for our 16 mailboxes - 10*8 = 160 bytes
-	FILTER CAN1Filters[NUM_MAILBOXES]; // filters for our 16 mailboxes - 10*8 = 160 bytes
+	FILTER CAN0Filters[16]; // filters for our 16 mailboxes - 10*8 = 160 bytes
+	FILTER CAN1Filters[16]; // filters for our 16 mailboxes - 10*8 = 160 bytes
 
 	boolean useBinarySerialComm; //use a binary protocol on the serial link or human readable format?
 	FILEOUTPUTTYPE fileOutputType; //what format should we use for file output?
