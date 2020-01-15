@@ -1,5 +1,5 @@
 /*
- * GEVCU.h
+ * SerialConsole.h
  *
 Copyright (c) 2013 Collin Kidder, Michael Neuweiler, Charles Galpin
 
@@ -22,48 +22,43 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
- */
+*/
 
-#ifndef GVRET_H_
-#define GVRET_H_
+#ifndef SERIALCONSOLE_H_
+#define SERIALCONSOLE_H_
 
-#include <Arduino.h>
-#include <FlexCAN_T4.h>
-#include <SdFat.h>
-#include <EEPROM.h>
 #include "config.h"
+#include "TeensyRET.h"
+#include "Logger.h"
+#include <FlexCAN_T4.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-void loop();
-void setup();
-#ifdef __cplusplus
-} // extern "C"
-#endif
+class SerialConsole {
+public:
+	SerialConsole();
+	void printMenu();
+	void rcvCharacter(uint8_t chr);
 
-enum STATE {
-	IDLE,
-	GET_COMMAND,
-	BUILD_CAN_FRAME,
-	TIME_SYNC,
-	GET_DIG_INPUTS,
-	GET_ANALOG_INPUTS,
-	SET_DIG_OUTPUTS,
-	SETUP_CANBUS,
-	GET_CANBUS_PARAMS,
-	GET_DEVICE_INFO,
-	SET_SINGLEWIRE_MODE,
-	SET_SYSTYPE,
-	ECHO_CAN_FRAME
+protected:
+	enum CONSOLE_STATE
+	{
+		STATE_ROOT_MENU
+	};
+
+private:
+	char cmdBuffer[80];
+	int ptrBuffer;
+	int state;
+    
+	void init();
+	void handleConsoleCmd();
+	void handleShortCmd();
+	void handleConfigCmd();
+	void handleLawicelCmd();
+	bool handleFilterSet(uint8_t bus, uint8_t filter, char *values);
+	bool handleCAN0Send(FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> &port, char *inputString);
+	bool handleCAN1Send(FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> &port, char *inputString);
+	unsigned int parseHexCharacter(char chr);
+	unsigned int parseHexString(char *str, int length);
 };
 
-void loadSettings();
-void processDigToggleFrame(CAN_message_t &frame);
-void sendDigToggleMsg();
-
-#endif /* GVRET_H_ */
-
-
-
-
+#endif /* SERIALCONSOLE_H_ */
