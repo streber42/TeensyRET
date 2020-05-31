@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GVRET_H_
 
 #include <Arduino.h>
-#include <FlexCAN.h>
+#include <FlexCAN_T4.h>
 
 #ifdef __cplusplus
 extern "C" {

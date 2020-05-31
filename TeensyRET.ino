@@ -31,10 +31,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "config.h"
 #include "SerialConsole.h"
 #include <EEPROM.h>
-#include <FlexCAN.h>
+#include <FlexCAN_T4.h>
 #include <Wire.h>
 #include <SdFat.h>
 
+
+FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> Can0; 
+FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> Can1; 
 
 byte i = 0;
 
@@ -47,7 +50,8 @@ SystemSettings SysSettings;
 DigitalCANToggleSettings digToggleSettings;
 
 // file system on sdcard
-SdFatSdio sd;
+SdExFat sd;
+// SdFatSdio sd;
 
 SerialConsole console;
 
@@ -58,7 +62,9 @@ uint8_t digTogglePinCounter;
 //there is only one checksum check for all of them so it's simple to do it all here.
 void loadSettings()
 {
-	EEPROM.get(EEPROM_ADDRESS, settings);
+	Logger::console("Loading EEPROM");
+	// EEPROM.get(EEPROM_ADDRESS, settings);
+	Logger::console("EEPROM loaded");
 
 	if (settings.version != EEPROM_VER) //if settings are not the current version then erase them and set defaults
 	{
@@ -102,7 +108,7 @@ void loadSettings()
 		settings.valid = 0; //not used right now
 		settings.CAN0ListenOnly = false;
 		settings.CAN1ListenOnly = false;
-		EEPROM.put(EEPROM_ADDRESS, settings);
+		// EEPROM.put(EEPROM_ADDRESS, settings);
 	}
 	else {
 		Logger::console("Using stored values from EEPROM");
@@ -120,7 +126,7 @@ void loadSettings()
         digToggleSettings.pin = 1;
         digToggleSettings.rxTxID = 0x700;
         for (int c=0 ; c<8 ; c++) digToggleSettings.payload[c] = 0;
-        EEPROM.put(EEPROM_ADDRESS + 500, digToggleSettings);        
+        // EEPROM.put(EEPROM_ADDRESS + 500, digToggleSettings);        
     }
     else
     {
@@ -153,11 +159,19 @@ void setup()
 	delay(5000); //just for testing. Don't use in production
     pinMode(BLINK_LED, OUTPUT);
     digitalWrite(BLINK_LED, LOW);
+	delay(500);
+	digitalWrite(BLINK_LED, HIGH);
+	delay(1000);
+	digitalWrite(BLINK_LED, LOW);
 
     Serial.begin(115200);
 	Wire.begin();
+	Serial.println("Hello world!");
+	Logger::console("Hello world!");
 
 	loadSettings();
+	Serial.println("Hello settings!");
+	Logger::console("Hello settings!");
 
     if (SysSettings.useSD) {	
 		if (!sd.begin()) 
@@ -201,7 +215,11 @@ void setup()
 	if (settings.CAN0_Enabled)
 	{
         Serial.println("Init CAN0");
-		Can0.begin(settings.CAN0Speed);
+//   Can1.enableFIFO();
+//   Can1.enableFIFOInterrupt();
+//   Can1.onReceive(FIFO, canSniff20);
+        Can0.begin();
+        Can0.setBaudRate(settings.CAN0Speed);
         if (SysSettings.CAN0EnablePin < 255) 
         {
             pinMode(SysSettings.CAN0EnablePin, OUTPUT);
@@ -209,22 +227,23 @@ void setup()
         }
         if (settings.CAN0ListenOnly)
         {
-            Can0.setListenOnly(true);
+            // Can0.setListenOnly(true);
         }
         else
         {
-            Can0.setListenOnly(false);
+            // Can0.setListenOnly(false);
         }
 	}
 	else {
         Serial.println("CAN0 disabled.");
         //TODO: apparently calling end while it isn't inialized actually locks it up
-        //Can0.end();
+        Can0.reset();
     }
 	if (settings.CAN1_Enabled)
 	{
         Serial.println("Init CAN0");
-		Can1.begin(settings.CAN1Speed);
+		Can1.begin();
+		Can1.setBaudRate(settings.CAN1Speed);
         if (SysSettings.CAN1EnablePin < 255)
         {
             pinMode(SysSettings.CAN1EnablePin, OUTPUT);
@@ -232,16 +251,16 @@ void setup()
         }
         if (settings.CAN1ListenOnly)
         {
-            Can1.setListenOnly(true);
+            // Can1.setListenOnly(true);
         }
         else
         {
-            Can1.setListenOnly(false);
+            // Can1.setListenOnly(false);
         }        
 	}
 	else {
         Serial.println("CAN1 disabled.");
-        //Can1.end();
+        Can1.reset();
     }
     /*
 	for (int i = 0; i < 7; i++) 
@@ -312,7 +331,7 @@ void sendFrameToUSB(CAN_message_t &frame, int whichBus)
 	
 	if (SysSettings.lawicelMode)
 	{
-		if (frame.ext)
+		if (frame.flags.extended)
 		{
 			Serial.print("T");
 			sprintf((char *)buff, "%08x", frame.id);
@@ -341,7 +360,7 @@ void sendFrameToUSB(CAN_message_t &frame, int whichBus)
 	else
 	{
 		if (settings.useBinarySerialComm) {
-			if (frame.ext) frame.id |= 1 << 31;
+			if (frame.flags.extended) frame.id |= 1 << 31;
 			serialBuffer[serialBufferLength++] = 0xF1;
 			serialBuffer[serialBufferLength++] = 0; //0 = canbus frame sending
 			serialBuffer[serialBufferLength++] = (uint8_t)(now & 0xFF);
@@ -367,7 +386,7 @@ void sendFrameToUSB(CAN_message_t &frame, int whichBus)
 			Serial.print(micros());
 			Serial.print(" - ");
 			Serial.print(frame.id, HEX);
-			if (frame.ext) Serial.print(" X ");
+			if (frame.flags.extended) Serial.print(" X ");
 			else Serial.print(" S ");
 			Serial.print(whichBus);
 			Serial.print(" ");
@@ -388,7 +407,7 @@ void sendFrameToFile(CAN_message_t &frame, int whichBus)
 	uint8_t temp;
 	uint32_t timestamp;
 	if (settings.fileOutputType == BINARYFILE) {
-		if (frame.ext) frame.id |= 1 << 31;
+		if (frame.flags.extended) frame.id |= 1 << 31;
 		timestamp = micros();
 		buff[0] = (uint8_t)(timestamp & 0xFF);
 		buff[1] = (uint8_t)(timestamp >> 8);
@@ -407,7 +426,7 @@ void sendFrameToFile(CAN_message_t &frame, int whichBus)
 	}
 	else if (settings.fileOutputType == GVRET)
 	{
-		sprintf((char *)buff, "%i,%x,%i,%i,%i", millis(), frame.id, frame.ext, whichBus, frame.len);
+		sprintf((char *)buff, "%i,%x,%i,%i,%i", millis(), frame.id, frame.flags.extended, whichBus, frame.len);
 		Logger::fileRaw(buff, strlen((char *)buff));
 
 		for (int c = 0; c < frame.len; c++)
@@ -422,7 +441,7 @@ void sendFrameToFile(CAN_message_t &frame, int whichBus)
 	else if (settings.fileOutputType == CRTD)
 	{
 		int idBits = 11;
-		if (frame.ext) idBits = 29;
+		if (frame.flags.extended) idBits = 29;
 		sprintf((char *)buff, "%f R%i %x", millis() / 1000.0f, idBits, frame.id);
 		Logger::fileRaw(buff, strlen((char *)buff));
 
@@ -465,8 +484,8 @@ void sendDigToggleMsg() {
     CAN_message_t frame;
     Serial.println("Got digital input trigger.");
     frame.id = digToggleSettings.rxTxID;
-    if (frame.id > 0x7FF) frame.ext = 1;
-    else frame.ext = 0;
+    if (frame.id > 0x7FF) frame.flags.extended = 1;
+    else frame.flags.extended = 0;
     frame.len = digToggleSettings.length;
     for (int c = 0; c < frame.len; c++) frame.buf[c] = digToggleSettings.payload[c];
     if (digToggleSettings.mode & 2) {
@@ -513,22 +532,22 @@ void loop()
 
 	//if (!SysSettings.lawicelMode || SysSettings.lawicelAutoPoll || SysSettings.lawicelPollCounter > 0)
 	//{
-		if (Can0.available()) {
+		// if (Can0.available()) {
 			Can0.read(incoming);
 			toggleRXLED();
 			if (isConnected) sendFrameToUSB(incoming, 0);
 			if (SysSettings.logToFile) sendFrameToFile(incoming, 0);
             if (digToggleSettings.enabled && (digToggleSettings.mode & 1) && (digToggleSettings.mode & 2)) processDigToggleFrame(incoming);
 			//fwGotFrame(&incoming);
-		}
+		// }
 
-		if (Can1.available()) {
+		// if (Can1.available()) {
 			Can1.read(incoming); 
 			toggleRXLED();
 			if (isConnected) sendFrameToUSB(incoming, 1);
             if (digToggleSettings.enabled && (digToggleSettings.mode & 1) && (digToggleSettings.mode & 4)) processDigToggleFrame(incoming);
 			if (SysSettings.logToFile) sendFrameToFile(incoming, 1);
-		}
+		// }
 		if (SysSettings.lawicelPollCounter > 0) SysSettings.lawicelPollCounter--;
 	//}
         
@@ -715,9 +734,9 @@ void loop()
 			   if (build_out_frame.id & 1 << 31) 
 			   {
 				   build_out_frame.id &= 0x7FFFFFFF;
-				   build_out_frame.ext = 1;
+				   build_out_frame.flags.extended = 1;
 			   }
-			   else build_out_frame.ext = 0;
+			   else build_out_frame.flags.extended = 0;
 			   break;
 		   case 4:
 		       out_bus = in_byte & 1;
@@ -790,12 +809,12 @@ void loop()
 					   if (build_int & 0x20000000)
 					   {
 						   settings.CAN0ListenOnly = true;
-						   Can0.setListenOnly(true);
+						//    Can0.setListenOnly(true);
 					   }
 					   else
 					   {
 						   settings.CAN0ListenOnly = false;
-						   Can0.setListenOnly(false);
+						//    Can0.setListenOnly(false);
 					   }
 				   }
 				   else
@@ -804,7 +823,8 @@ void loop()
 				   }
 				   build_int = build_int & 0xFFFFF;
 				   if (build_int > 1000000) build_int = 1000000;				   
-				   Can0.begin(build_int);
+				   Can0.begin();
+				   Can0.setBaudRate(build_int);
                    if (SysSettings.CAN0EnablePin < 255 && settings.CAN0_Enabled)
                    {
                        pinMode(SysSettings.CAN0EnablePin, OUTPUT);
@@ -816,7 +836,7 @@ void loop()
 			   }
 			   else //disable first canbus
 			   {
-				   Can0.end();
+				   Can0.reset();
                    digitalWrite(SysSettings.CAN0EnablePin, LOW);
 				   settings.CAN0_Enabled = false;
 			   }
@@ -847,12 +867,12 @@ void loop()
 					   if (build_int & 0x20000000)
 					   {
 						   settings.CAN1ListenOnly = true;
-						   Can1.setListenOnly(true);
+						//    Can1.setListenOnly(true);
 					   }
 					   else
 					   {
 						   settings.CAN1ListenOnly = false;
-						   Can1.setListenOnly(false);
+						//    Can1.setListenOnly(false);
 					   }
 				   }
 				   else
@@ -861,7 +881,8 @@ void loop()
 				   }
 				   build_int = build_int & 0xFFFFF;
 				   if (build_int > 1000000) build_int = 1000000;
-				   Can1.begin(build_int);
+				   Can1.begin();
+				   Can1.setBaudRate(build_int);
                    if (SysSettings.CAN1EnablePin < 255 && settings.CAN1_Enabled)
                    {
                        pinMode(SysSettings.CAN1EnablePin, OUTPUT);
@@ -874,7 +895,7 @@ void loop()
 			   }
 			   else //disable second canbus
 			   {
-				   Can1.end();
+				   Can1.reset();
                    digitalWrite(SysSettings.CAN1EnablePin, LOW);
 				   settings.CAN1_Enabled = false;
 			   }
@@ -912,9 +933,9 @@ void loop()
 			   if (build_out_frame.id & 1 << 31) 
 			   {
 				   build_out_frame.id &= 0x7FFFFFFF;
-				   build_out_frame.ext = 1;
+				   build_out_frame.flags.extended = 1;
 			   }
-			   else build_out_frame.ext = 0;
+			   else build_out_frame.flags.extended = 0;
 			   break;
 		   case 4:
 		       out_bus = in_byte & 1;

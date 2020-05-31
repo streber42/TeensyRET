@@ -28,6 +28,7 @@
 
 #include "SerialConsole.h"
 #include "config.h"
+#include <FlexCAN_T4.h>
 
 SerialConsole::SerialConsole() {
 	init();
@@ -155,7 +156,7 @@ void SerialConsole::handleLawicelCmd()
       case 't': //transmit standard frame	
 	outFrame.id = parseHexString(cmdBuffer + 1, 3);
 	outFrame.len = cmdBuffer[4] - '0';
-	outFrame.ext = 0;
+	outFrame.flags.extended = 0;
 	if (outFrame.len < 0) outFrame.len = 0;
 	if (outFrame.len > 8) outFrame.len = 8;
 	for (int data = 0; data < outFrame.len; data++)
@@ -168,7 +169,7 @@ void SerialConsole::handleLawicelCmd()
       case 'T': //transmit extended frame
 	outFrame.id = parseHexString(cmdBuffer + 1, 8);
 	outFrame.len = cmdBuffer[9] - '0';
-	outFrame.ext = 1;
+	outFrame.flags.extended = 1;
 	if (outFrame.len < 0) outFrame.len = 0;
 	if (outFrame.len > 8) outFrame.len = 8;
 	for (int data = 0; data < outFrame.len; data++)
@@ -280,14 +281,15 @@ void SerialConsole::handleConfigCmd() {
 		Logger::console("Setting CAN0 Enabled to %i", newValue);
 		settings.CAN0_Enabled = newValue;
 		if (newValue == 1) {
-            Can0.begin(settings.CAN0Speed);
+            Can0.begin();
+			Can0.setBaudRate(settings.CAN0Speed);
             if (SysSettings.CAN0EnablePin < 255) {
                 pinMode(SysSettings.CAN0EnablePin, OUTPUT);
                 digitalWrite(SysSettings.CAN0EnablePin, HIGH);
             }
         }
 		else {
-            Can0.end();
+            Can0.reset();
             digitalWrite(SysSettings.CAN0EnablePin, LOW);
         }
 		writeEEPROM = true;
@@ -296,7 +298,8 @@ void SerialConsole::handleConfigCmd() {
 		if (newValue > 1) newValue = 1;
 		Logger::console("Setting CAN1 Enabled to %i", newValue);
 		if (newValue == 1) {
-            Can1.begin(settings.CAN1Speed);
+            Can1.begin();
+			Can1.setBaudRate(settings.CAN1Speed);
             if (SysSettings.CAN1EnablePin < 255)
             {
                 pinMode(SysSettings.CAN1EnablePin, OUTPUT);
@@ -304,7 +307,7 @@ void SerialConsole::handleConfigCmd() {
             }
         }
 		else {
-            Can1.end();
+            Can1.reset();
             digitalWrite(SysSettings.CAN1EnablePin, LOW);
         }
 		settings.CAN1_Enabled = newValue;
@@ -314,7 +317,8 @@ void SerialConsole::handleConfigCmd() {
 		{
 			Logger::console("Setting CAN0 Baud Rate to %i", newValue);
 			settings.CAN0Speed = newValue;
-			Can0.begin(settings.CAN0Speed);
+			Can0.begin();
+			Can0.setBaudRate(settings.CAN0Speed);
 			writeEEPROM = true;
 		}
 		else Logger::console("Invalid baud rate! Enter a value 1 - 1000000");
@@ -323,7 +327,8 @@ void SerialConsole::handleConfigCmd() {
 		{
 			Logger::console("Setting CAN1 Baud Rate to %i", newValue);
 			settings.CAN1Speed = newValue;
-			Can1.begin(settings.CAN1Speed);
+            Can1.begin();
+			Can1.setBaudRate(settings.CAN1Speed);
 			writeEEPROM = true;
 		}
 		else Logger::console("Invalid baud rate! Enter a value 1 - 1000000");
@@ -335,11 +340,11 @@ void SerialConsole::handleConfigCmd() {
 			settings.CAN0ListenOnly = newValue;
 			if (settings.CAN0ListenOnly)
 			{
-				Can0.setListenOnly(true);
+				// Can0.setListenOnly(true);
 			}
 			else
 			{
-				Can0.setListenOnly(false);
+				// Can0.setListenOnly(false);
 			}
 			writeEEPROM = true;
 		}
@@ -351,11 +356,11 @@ void SerialConsole::handleConfigCmd() {
 			settings.CAN1ListenOnly = newValue;
 			if (settings.CAN1ListenOnly)
 			{
-				Can1.setListenOnly(true);
+				// Can1.setListenOnly(true);
 			}
 			else
 			{
-				Can1.setListenOnly(false);
+				// Can1.setListenOnly(false);
 			}
 			writeEEPROM = true;
 		}
@@ -631,29 +636,30 @@ void SerialConsole::handleShortCmd() {
 		SysSettings.lawicelMode = true;
 		break;
 	case 'C': //LAWICEL close canbus port (First one)
-		Can0.end();
+		Can0.reset();
         digitalWrite(SysSettings.CAN0EnablePin, LOW);
 		Serial.write(13); //send CR to mean "ok"
 		break;
 	case 'L': //LAWICEL open canbus port in listen only mode
-		Can0.begin(settings.CAN0Speed); //this is NOT really listen only mode but it isn't supported yet so for now...
+		Can0.begin(); //this is NOT really listen only mode but it isn't supported yet so for now...
+		Can0.setBaudRate(settings.CAN0Speed);
         if (SysSettings.CAN0EnablePin < 255)
         {
             pinMode(SysSettings.CAN0EnablePin, OUTPUT);
             digitalWrite(SysSettings.CAN0EnablePin, HIGH);
         }
-		Can0.setListenOnly(true);
+		// Can0.setListenOnly(true);
 		Serial.write(13); //send CR to mean "ok"
 		SysSettings.lawicelMode = true;
 		break;
-	case 'P': //LAWICEL - poll for one waiting frame. Or, just CR if no frames
-		if (Can0.available()) SysSettings.lawicelPollCounter = 1;
-		else Serial.write(13); //no waiting frames
-		break;
-	case 'A': //LAWICEL - poll for all waiting frames - CR if no frames
-		SysSettings.lawicelPollCounter = Can0.available();
-		if (SysSettings.lawicelPollCounter == 0) Serial.write(13);
-		break;
+	// case 'P': //LAWICEL - poll for one waiting frame. Or, just CR if no frames
+	// 	if (Can0.available()) SysSettings.lawicelPollCounter = 1;
+	// 	else Serial.write(13); //no waiting frames
+	// 	break;
+	// case 'A': //LAWICEL - poll for all waiting frames - CR if no frames
+	// 	SysSettings.lawicelPollCounter = Can0.available();
+	// 	if (SysSettings.lawicelPollCounter == 0) Serial.write(13);
+	// 	break;
 	case 'F': //LAWICEL - read status bits 
 		Serial.print("F00"); //bit 0 = RX Fifo Full, 1 = TX Fifo Full, 2 = Error warning, 3 = Data overrun, 5= Error passive, 6 = Arb. Lost, 7 = Bus Error
 		Serial.write(13);
@@ -713,7 +719,7 @@ bool SerialConsole::handleFilterSet(uint8_t bus, uint8_t filter, char *values)
 	return true;
 }
 
-bool SerialConsole::handleCANSend(FlexCAN &port, char *inputString)
+bool SerialConsole::handleCANSend(FlexCAN_T4_Base &port, char *inputString)
 {
 	char *idTok = strtok(inputString, ",");
 	char *lenTok = strtok(NULL, ",");
@@ -735,8 +741,8 @@ bool SerialConsole::handleCANSend(FlexCAN &port, char *inputString)
 
 	//things seem good so try to send the frame.
 	frame.id = idVal;
-	if (idVal >= 0x7FF) frame.ext = 1;
-	else frame.ext = 0;
+	if (idVal >= 0x7FF) frame.flags.extended = 1;
+	else frame.flags.extended = 0;
 	frame.len = lenVal;
 	port.write(frame);
 	Logger::console("Sending frame with id: 0x%x len: %i", frame.id, frame.len);

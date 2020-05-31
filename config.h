@@ -33,7 +33,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-#include <FlexCAN.h>
+#include <FlexCAN_T4.h>
+#define NUM_MAILBOXES 16
+
+extern FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> Can0; 
+extern FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> Can1; 
 
 struct FILTER {  //should be 10 bytes
 	uint32_t id;
@@ -44,7 +48,7 @@ struct FILTER {  //should be 10 bytes
 
 enum FILEOUTPUTTYPE
 {
-	NONE = 0,
+	OFF = 0,
 	BINARYFILE = 1,
 	GVRET = 2,
 	CRTD = 3
