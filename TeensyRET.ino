@@ -63,12 +63,15 @@ uint8_t digTogglePinCounter;
 void loadSettings()
 {
 	Logger::console("Loading EEPROM");
-	// EEPROM.get(EEPROM_ADDRESS, settings);
+	Serial.flush();
+	EEPROM.get(EEPROM_ADDRESS, settings);
 	Logger::console("EEPROM loaded");
+	Serial.flush();
 
 	if (settings.version != EEPROM_VER) //if settings are not the current version then erase them and set defaults
 	{
 		Logger::console("Resetting to factory defaults");
+		Serial.flush();
 		settings.version = EEPROM_VER;
 		settings.appendFile = false;
 		settings.CAN0Speed = 500000;
@@ -108,30 +111,36 @@ void loadSettings()
 		settings.valid = 0; //not used right now
 		settings.CAN0ListenOnly = false;
 		settings.CAN1ListenOnly = false;
-		// EEPROM.put(EEPROM_ADDRESS, settings);
+		Logger::console("Done resetting to factory defaults");
+		Serial.flush();
+    	EEPROM.put(EEPROM_ADDRESS, settings);
 	}
 	else {
 		Logger::console("Using stored values from EEPROM");
+     	Serial.flush();
         if (settings.CAN0ListenOnly > 1) settings.CAN0ListenOnly = 0;
         if (settings.CAN1ListenOnly > 1) settings.CAN1ListenOnly = 0;
 	}
-	
+	Logger::console("Stored settings");
+	Serial.flush();
 	EEPROM.get(EEPROM_ADDRESS + 500, digToggleSettings);
 	if (digToggleSettings.mode == 255)
     {
         Logger::console("Resetting digital toggling system to defaults");
+     	Serial.flush();
         digToggleSettings.enabled = false;
         digToggleSettings.length = 0;
         digToggleSettings.mode = 0;
         digToggleSettings.pin = 1;
         digToggleSettings.rxTxID = 0x700;
         for (int c=0 ; c<8 ; c++) digToggleSettings.payload[c] = 0;
-        // EEPROM.put(EEPROM_ADDRESS + 500, digToggleSettings);        
+        EEPROM.put(EEPROM_ADDRESS + 500, digToggleSettings);        
     }
     else
     {
         Logger::console("Using stored values for digital toggling system");
-    }
+    	Serial.flush();
+}
     
 	Logger::setLoglevel((Logger::LogLevel)settings.logLevel);
 
@@ -141,7 +150,8 @@ void loadSettings()
         
 		//case 1:  
 			Logger::console("Running on Teensy Hardware");
-			SysSettings.CAN0EnablePin = 2;
+			Serial.flush();
+        	SysSettings.CAN0EnablePin = 2;
 			SysSettings.CAN1EnablePin = 35;
 			SysSettings.LED_CANTX = 13; //We do have an LED at pin 13. Use it for both
 			SysSettings.LED_CANRX = 13; //RX and TX.
@@ -164,35 +174,42 @@ void setup()
 	delay(1000);
 	digitalWrite(BLINK_LED, LOW);
 
-    Serial.begin(115200);
-	Wire.begin();
+    Serial.begin(9600);
 	Serial.println("Hello world!");
 	Logger::console("Hello world!");
+	Wire.begin();
 
 	loadSettings();
 	Serial.println("Hello settings!");
 	Logger::console("Hello settings!");
+	Serial.flush();
 
     if (SysSettings.useSD) {	
 		if (!sd.begin()) 
 		{
 			Logger::error("Could not initialize SDCard! No file logging will be possible!");
+	Serial.flush();
 		}
 		else SysSettings.SDCardInserted = true;
 		if (settings.autoStartLogging) {
 			SysSettings.logToFile = true;
 			Logger::info("Automatically logging to file.");
+	Serial.flush();
 		}
 	}
 
     Serial.print("Build number: ");
+	Serial.flush();
     Serial.println(CFG_BUILD_NUM);
     
+	Serial.flush();
     if (digToggleSettings.enabled)
     {
         Serial.println("Digital Toggle System Enabled");
+	Serial.flush();
         if (digToggleSettings.mode & 1) { //input CAN and output pin state mode
             Serial.println("In Output Mode");
+	Serial.flush();
             pinMode(digToggleSettings.pin, OUTPUT);
             if (digToggleSettings.mode & 0x80) {
                 digitalWrite(digToggleSettings.pin, LOW);
@@ -205,6 +222,7 @@ void setup()
         }
         else { //read pin and output CAN mode
             Serial.println("In Input Mode");
+	Serial.flush();
             pinMode(digToggleSettings.pin, INPUT);
             digTogglePinCounter = 0;
             if (digToggleSettings.mode & 0x80) digTogglePinState = false;
@@ -215,6 +233,7 @@ void setup()
 	if (settings.CAN0_Enabled)
 	{
         Serial.println("Init CAN0");
+	Serial.flush();
 //   Can1.enableFIFO();
 //   Can1.enableFIFOInterrupt();
 //   Can1.onReceive(FIFO, canSniff20);
@@ -236,12 +255,15 @@ void setup()
 	}
 	else {
         Serial.println("CAN0 disabled.");
+			Serial.flush();
+
         //TODO: apparently calling end while it isn't inialized actually locks it up
-        Can0.reset();
+        // Can0.reset();
     }
 	if (settings.CAN1_Enabled)
 	{
         Serial.println("Init CAN0");
+	Serial.flush();
 		Can1.begin();
 		Can1.setBaudRate(settings.CAN1Speed);
         if (SysSettings.CAN1EnablePin < 255)
@@ -260,7 +282,8 @@ void setup()
 	}
 	else {
         Serial.println("CAN1 disabled.");
-        Can1.reset();
+	Serial.flush();
+        // Can1.reset();
     }
     /*
 	for (int i = 0; i < 7; i++) 
@@ -284,6 +307,7 @@ void setup()
 	SysSettings.lawicelPollCounter = 0;
 
 	Serial.print("Done with init\n");
+	Serial.flush();
 	digitalWrite(BLINK_LED, HIGH);
 }
 
@@ -533,7 +557,7 @@ void loop()
 	//if (!SysSettings.lawicelMode || SysSettings.lawicelAutoPoll || SysSettings.lawicelPollCounter > 0)
 	//{
 		// if (Can0.available()) {
-			Can0.read(incoming);
+			// Can0.read(incoming);
 			toggleRXLED();
 			if (isConnected) sendFrameToUSB(incoming, 0);
 			if (SysSettings.logToFile) sendFrameToFile(incoming, 0);
@@ -542,7 +566,7 @@ void loop()
 		// }
 
 		// if (Can1.available()) {
-			Can1.read(incoming); 
+			// Can1.read(incoming); 
 			toggleRXLED();
 			if (isConnected) sendFrameToUSB(incoming, 1);
             if (digToggleSettings.enabled && (digToggleSettings.mode & 1) && (digToggleSettings.mode & 4)) processDigToggleFrame(incoming);
@@ -836,7 +860,7 @@ void loop()
 			   }
 			   else //disable first canbus
 			   {
-				   Can0.reset();
+				//    Can0.reset();
                    digitalWrite(SysSettings.CAN0EnablePin, LOW);
 				   settings.CAN0_Enabled = false;
 			   }
@@ -895,7 +919,7 @@ void loop()
 			   }
 			   else //disable second canbus
 			   {
-				   Can1.reset();
+				//    Can1.reset();
                    digitalWrite(SysSettings.CAN1EnablePin, LOW);
 				   settings.CAN1_Enabled = false;
 			   }

@@ -148,7 +148,7 @@ void SerialConsole::handleLawicelCmd()
 {
     cmdBuffer[ptrBuffer] = 0; //make sure to null terminate
     CAN_message_t outFrame;
-    char buff[80];
+    // char buff[80];
     int val;
     
     switch (cmdBuffer[0])
@@ -255,7 +255,7 @@ void SerialConsole::handleConfigCmd() {
 		return; //4 digit command, =, value is at least 6 characters
 	cmdBuffer[ptrBuffer] = 0; //make sure to null terminate
 	String cmdString = String();
-	unsigned char whichEntry = '0';
+	// unsigned char whichEntry = '0';
 	i = 0;
 
 	while (cmdBuffer[i] != '=' && i < ptrBuffer) {
@@ -610,7 +610,7 @@ void SerialConsole::handleConfigCmd() {
 LAWICEL single letter commands are now mixed in with the other commands here.
 */
 void SerialConsole::handleShortCmd() {
-	uint8_t val;
+	// uint8_t val;
 
 	switch (cmdBuffer[0]) {
 	case 'h':
