@@ -134,7 +134,7 @@ void Logger::flushFileBuff()
 		fileBuffWritePtr = 0;
 		return;
 	}
-	// fileRef.sync(); //needed in order to update the file if you aren't closing it ever
+	fileRef.sync(); //needed in order to update the file if you aren't closing it ever
 	SysSettings.logToggle = !SysSettings.logToggle;
 	//setLED(SysSettings.LED_LOGGING, SysSettings.logToggle);
 	fileBuffWritePtr = 0;
@@ -143,36 +143,36 @@ void Logger::flushFileBuff()
 
 boolean Logger::setupFile()
 {
-	// if (!fileRef.isOpen())  //file not open. Try to open it.
-	// {
-	// 	String filename;
-	// 	if (settings.appendFile == 1)
-	// 	{
-	// 		filename = String(settings.fileNameBase);
-	// 		filename.concat(".");
-	// 		filename.concat(settings.fileNameExt);
-	// 		fileRef.open(filename.c_str(), O_APPEND | O_WRITE);
-	// 	}
-	// 	else {
-	// 		filename = String(settings.fileNameBase);
-	// 		filename.concat(settings.fileNum++);
-	// 		filename.concat(".");
-	// 		filename.concat(settings.fileNameExt);
-	// 		EEPROM.put(EEPROM_ADDRESS, settings); //save settings to save updated filenum
-	// 		fileRef.open(filename.c_str(), O_CREAT | O_TRUNC | O_WRITE);
-	// 	}
-	// 	if (!fileRef.isOpen())
-	// 	{
-	// 		Logger::error("open failed");
-	// 		return false;
-	// 	}
-	// }
+	if (!fileRef.isOpen())  //file not open. Try to open it.
+	{
+		String filename;
+		if (settings.appendFile == 1)
+		{
+			filename = String(settings.fileNameBase);
+			filename.concat(".");
+			filename.concat(settings.fileNameExt);
+			fileRef.open(filename.c_str(), O_APPEND | O_WRITE);
+		}
+		else {
+			filename = String(settings.fileNameBase);
+			filename.concat(settings.fileNum++);
+			filename.concat(".");
+			filename.concat(settings.fileNameExt);
+			EEPROM.put(EEPROM_ADDRESS, settings); //save settings to save updated filenum
+			fileRef.open(filename.c_str(), O_CREAT | O_TRUNC | O_WRITE);
+		}
+		if (!fileRef.isOpen())
+		{
+			Logger::error("open failed");
+			return false;
+		}
+	}
 
-	// //Before we add the next frame see if the buffer is nearly full. if so flush it first.
-	// if (fileBuffWritePtr > SD_BUFF_SIZE - 40)
-	// {
-	// 	flushFileBuff();
-	// }
+	//Before we add the next frame see if the buffer is nearly full. if so flush it first.
+	if (fileBuffWritePtr > SD_BUFF_SIZE - 40)
+	{
+		flushFileBuff();
+	}
 	return true;
 }
 
@@ -241,11 +241,11 @@ void Logger::file(const char *message, ...)
 				continue;
 			}
 
-			if (*message == 'l') {
-				// sprintf(buff, "%l", va_arg(args, long));
-				buffPutString(buff);
-				continue;
-			}
+			// if (*message == 'l') {
+			// 	sprintf(buff, "%l", va_arg(args, long));
+			// 	buffPutString(buff);
+			// 	continue;
+			// }
 
 			if (*message == 'c') {
 				buffPutChar(va_arg(args, int));

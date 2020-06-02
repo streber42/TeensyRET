@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <Wire.h>
 #include <SdFat.h>
 
+
 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> Can0;
 FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> Can1;
 
@@ -50,6 +51,8 @@ SystemSettings SysSettings;
 DigitalCANToggleSettings digToggleSettings;
 
 // file system on sdcard
+SdExFat sd;
+// SdFatSdio sd;
 // SdFs sd;
 // #define SD1_CONFIG SdSpiConfig(36, DEDICATED_SPI, SD_SCK_MHZ(18), &SPI1);
 SerialConsole console;
@@ -61,11 +64,16 @@ uint8_t digTogglePinCounter;
 //there is only one checksum check for all of them so it's simple to do it all here.
 void loadSettings()
 {
+	Logger::console("Loading EEPROM");
+	Serial.flush();
 	EEPROM.get(EEPROM_ADDRESS, settings);
+	Logger::console("EEPROM loaded");
+	Serial.flush();
 
 	if (settings.version != EEPROM_VER) //if settings are not the current version then erase them and set defaults
 	{
 		Logger::console("Resetting to factory defaults");
+		Serial.flush();
 		settings.version = EEPROM_VER;
 		settings.appendFile = false;
 		settings.CAN0Speed = 500000;
@@ -105,18 +113,23 @@ void loadSettings()
 		settings.valid = 0; //not used right now
 		settings.CAN0ListenOnly = false;
 		settings.CAN1ListenOnly = false;
-		EEPROM.put(EEPROM_ADDRESS, settings);
+		Logger::console("Done resetting to factory defaults");
+		Serial.flush();
+    		EEPROM.put(EEPROM_ADDRESS, settings);
 	}
 	else {
 		Logger::console("Using stored values from EEPROM");
+     		Serial.flush();
         if (settings.CAN0ListenOnly > 1) settings.CAN0ListenOnly = 0;
         if (settings.CAN1ListenOnly > 1) settings.CAN1ListenOnly = 0;
 	}
-	
+	Logger::console("Stored settings");
+	Serial.flush();
 	EEPROM.get(EEPROM_ADDRESS + 500, digToggleSettings);
 	if (digToggleSettings.mode == 255)
     {
         Logger::console("Resetting digital toggling system to defaults");
+     	Serial.flush();
         digToggleSettings.enabled = false;
         digToggleSettings.length = 0;
         digToggleSettings.mode = 0;
@@ -128,8 +141,8 @@ void loadSettings()
     else
     {
         Logger::console("Using stored values for digital toggling system");
+    	Serial.flush();
     }
-
 	Logger::setLoglevel((Logger::LogLevel)settings.logLevel);
 
 	SysSettings.SDCardInserted = false;
@@ -138,7 +151,8 @@ void loadSettings()
         
 		//case 1:  
 			Logger::console("Running on Teensy Hardware");
-			SysSettings.CAN0EnablePin = 2;
+			Serial.flush();
+   		     	SysSettings.CAN0EnablePin = 2;
 			SysSettings.CAN1EnablePin = 35;
 			SysSettings.LED_CANTX = 13; //We do have an LED at pin 13. Use it for both
 			SysSettings.LED_CANRX = 13; //RX and TX.
@@ -179,33 +193,46 @@ void setup()
 	delay(5000); //just for testing. Don't use in production
     pinMode(BLINK_LED, OUTPUT);
     digitalWrite(BLINK_LED, LOW);
+	delay(500);
+	digitalWrite(BLINK_LED, HIGH);
+	delay(1000);
+	digitalWrite(BLINK_LED, LOW);
 
     Serial.begin(115200);
+	Serial.println("Hello world!");
+	Logger::console("Hello world!");
 	Wire.begin();
 
 	loadSettings();
+	Serial.println("Hello settings!");
+	Logger::console("Hello settings!");
+	Serial.flush();
 
-
-  // if (SysSettings.useSD) {
-  //   if (!sd.begin())
-  //   {
-  //     Logger::error("Could not initialize SDCard! No file logging will be possible!");
-  //   }
-  //   else SysSettings.SDCardInserted = true;
-  //   if (settings.autoStartLogging) {
-  //     SysSettings.logToFile = true;
-  //     Logger::info("Automatically logging to file.");
-  //   }
-  // }
+    if (SysSettings.useSD) {	
+		if (!sd.begin()) 
+		{
+			Logger::error("Could not initialize SDCard! No file logging will be possible!");
+	Serial.flush();
+		}
+		else SysSettings.SDCardInserted = true;
+		if (settings.autoStartLogging) {
+			SysSettings.logToFile = true;
+			Logger::info("Automatically logging to file.");
+	Serial.flush();
+		}
+	}
 
     Serial.print("Build number: ");
+    Serial.flush();
     Serial.println(CFG_BUILD_NUM);
-    
+    Serial.flush();
     if (digToggleSettings.enabled)
     {
         Serial.println("Digital Toggle System Enabled");
+	Serial.flush();
         if (digToggleSettings.mode & 1) { //input CAN and output pin state mode
             Serial.println("In Output Mode");
+            Serial.flush();
             pinMode(digToggleSettings.pin, OUTPUT);
             if (digToggleSettings.mode & 0x80) {
                 digitalWrite(digToggleSettings.pin, LOW);
@@ -218,6 +245,7 @@ void setup()
         }
         else { //read pin and output CAN mode
             Serial.println("In Input Mode");
+	    Serial.flush();
             pinMode(digToggleSettings.pin, INPUT);
             digTogglePinCounter = 0;
             if (digToggleSettings.mode & 0x80) digTogglePinState = false;
@@ -228,8 +256,9 @@ void setup()
 	if (settings.CAN0_Enabled)
 	{
         Serial.println("Init CAN0");
-		Can0.begin();
-        Can0.setBaudRate(500000);
+	Serial.flush();
+	Can0.begin();
+        Can0.setBaudRate(settings.CAN0Speed);
         Can0.enableFIFO();
         Can0.enableFIFOInterrupt();
         Can0.onReceive(FIFO, canSniff20);
@@ -250,31 +279,36 @@ void setup()
 	}
 	else {
         Serial.println("CAN0 disabled.");
+	Serial.flush();
+
         //TODO: apparently calling end while it isn't inialized actually locks it up
-        //Can0.end();
-	}
+        // Can0.reset();
+        }
 	if (settings.CAN1_Enabled)
 	{
-        Serial.println("Init CAN1");
-		Can1.begin();
+        Serial.println("Init CAN0");
+	Serial.flush();
+	Can1.begin();
+	Can1.setBaudRate(settings.CAN1Speed);
         if (SysSettings.CAN1EnablePin < 255)
         {
             pinMode(SysSettings.CAN1EnablePin, OUTPUT);
             digitalWrite(SysSettings.CAN1EnablePin, HIGH);
         }
-	if (settings.CAN1ListenOnly)
-    {
-    //    Can1.setListenOnly(true);
-    }
-    else
-    {
-    //    Can1.setListenOnly(false);
-    }
+        if (settings.CAN1ListenOnly)
+        {
+            // Can1.setListenOnly(true);
+        }
+        else
+        {
+            // Can1.setListenOnly(false);
+        }        
 	}
 	else {
         Serial.println("CAN1 disabled.");
-        //Can1.end();
-	}
+	Serial.flush();
+        // Can1.reset();
+    	}
     /*
 	for (int i = 0; i < 7; i++) 
 	{
@@ -297,6 +331,7 @@ void setup()
 	SysSettings.lawicelPollCounter = 0;
 
 	Serial.print("Done with init\n");
+	Serial.flush();
 	digitalWrite(BLINK_LED, HIGH);
 }
 
@@ -346,7 +381,7 @@ void sendFrameToUSB(const CAN_message_t &in_frame, int whichBus)
 	if (SysSettings.lawicelMode)
 	{
 		if (frame.flags.extended)
-    {
+		{
 			Serial.print("T");
 			sprintf((char *)buff, "%08x", frame.id);
 			Serial.print((char *)buff);
@@ -474,7 +509,7 @@ void sendFrameToFile(const CAN_message_t &in_frame, int whichBus)
 
 void processDigToggleFrame(const CAN_message_t &in_frame)
 {
-	CAN_message_t frame = in_frame;
+    CAN_message_t frame = in_frame;
     bool gotFrame = false;
     if (digToggleSettings.rxTxID == frame.id)
     {
@@ -602,7 +637,7 @@ void loop()
   }
 
   serialCnt = 0;
-   while (isConnected && (Serial.available() > 0) && serialCnt < 128) {
+  while (isConnected && (Serial.available() > 0) && serialCnt < 128) {
 	serialCnt++;
 	in_byte = Serial.read();
 	   switch (state) {
@@ -842,7 +877,8 @@ void loop()
 				   }
 				   build_int = build_int & 0xFFFFF;
 				   if (build_int > 1000000) build_int = 1000000;				   
-				//    Can0.begin(build_int);
+				   Can0.begin();
+				   Can0.setBaudRate(build_int);
                    if (SysSettings.CAN0EnablePin < 255 && settings.CAN0_Enabled)
                    {
                        pinMode(SysSettings.CAN0EnablePin, OUTPUT);
@@ -854,7 +890,7 @@ void loop()
 			   }
 			   else //disable first canbus
 			   {
-              // Can0.end();
+				//    Can0.reset();
                    digitalWrite(SysSettings.CAN0EnablePin, LOW);
 				   settings.CAN0_Enabled = false;
 			   }
@@ -899,7 +935,8 @@ void loop()
 				   }
 				   build_int = build_int & 0xFFFFF;
 				   if (build_int > 1000000) build_int = 1000000;
-				//    Can1.begin(build_int);
+				   Can1.begin();
+				   Can1.setBaudRate(build_int);
                    if (SysSettings.CAN1EnablePin < 255 && settings.CAN1_Enabled)
                    {
                        pinMode(SysSettings.CAN1EnablePin, OUTPUT);
@@ -912,7 +949,7 @@ void loop()
 			   }
 			   else //disable second canbus
 			   {
-				 // Can1.end();
+				//    Can1.reset();
                    digitalWrite(SysSettings.CAN1EnablePin, LOW);
 				   settings.CAN1_Enabled = false;
 			   }

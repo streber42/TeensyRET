@@ -29,6 +29,7 @@
 #include "SerialConsole.h"
 #include "config.h"
 #include <FlexCAN_T4.h>
+
 extern FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> Can0;
 extern FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> Can1;
 
@@ -284,14 +285,14 @@ void SerialConsole::handleConfigCmd() {
 		settings.CAN0_Enabled = newValue;
 		if (newValue == 1) {
             Can0.begin();
-			// settings.CAN0Speed);
+			Can0.setBaudRate(settings.CAN0Speed);
             if (SysSettings.CAN0EnablePin < 255) {
                 pinMode(SysSettings.CAN0EnablePin, OUTPUT);
                 digitalWrite(SysSettings.CAN0EnablePin, HIGH);
             }
         }
 		else {
-            // Can0.end();
+            // Can0.reset();
             digitalWrite(SysSettings.CAN0EnablePin, LOW);
         }
 		writeEEPROM = true;
@@ -301,7 +302,7 @@ void SerialConsole::handleConfigCmd() {
 		Logger::console("Setting CAN1 Enabled to %i", newValue);
 		if (newValue == 1) {
             Can1.begin();
-			// settings.CAN1Speed);
+			Can1.setBaudRate(settings.CAN1Speed);
             if (SysSettings.CAN1EnablePin < 255)
             {
                 pinMode(SysSettings.CAN1EnablePin, OUTPUT);
@@ -309,7 +310,7 @@ void SerialConsole::handleConfigCmd() {
             }
         }
 		else {
-            // Can1.end();
+            // Can1.reset();
             digitalWrite(SysSettings.CAN1EnablePin, LOW);
         }
 		settings.CAN1_Enabled = newValue;
@@ -320,7 +321,7 @@ void SerialConsole::handleConfigCmd() {
 			Logger::console("Setting CAN0 Baud Rate to %i", newValue);
 			settings.CAN0Speed = newValue;
 			Can0.begin();
-			// settings.CAN0Speed);
+			Can0.setBaudRate(settings.CAN0Speed);
 			writeEEPROM = true;
 		}
 		else Logger::console("Invalid baud rate! Enter a value 1 - 1000000");
@@ -329,8 +330,8 @@ void SerialConsole::handleConfigCmd() {
 		{
 			Logger::console("Setting CAN1 Baud Rate to %i", newValue);
 			settings.CAN1Speed = newValue;
-			Can1.begin();
-			// settings.CAN1Speed);
+            Can1.begin();
+			Can1.setBaudRate(settings.CAN1Speed);
 			writeEEPROM = true;
 		}
 		else Logger::console("Invalid baud rate! Enter a value 1 - 1000000");
@@ -416,10 +417,10 @@ void SerialConsole::handleConfigCmd() {
 		if (handleFilterSet(1, 7, newString)) writeEEPROM = true;
 	}
 	else if (cmdString == String("CAN0SEND")) {
-		handleCAN0Send(Can0, newString);
+		handleCANSend(Can0, newString);
 	}
 	else if (cmdString == String("CAN1SEND")) {
-		handleCAN1Send(Can1, newString);
+		handleCANSend(Can1, newString);
 	}
 	else if (cmdString == String("MARK")) { //just ascii based for now
 		if (settings.fileOutputType == GVRET) Logger::file("Mark: %s", newString);
@@ -638,13 +639,13 @@ void SerialConsole::handleShortCmd() {
 		SysSettings.lawicelMode = true;
 		break;
 	case 'C': //LAWICEL close canbus port (First one)
-		// Can0.end();
+		// Can0.reset();
         digitalWrite(SysSettings.CAN0EnablePin, LOW);
 		Serial.write(13); //send CR to mean "ok"
 		break;
 	case 'L': //LAWICEL open canbus port in listen only mode
-		Can0.begin();
-		// settings.CAN0Speed); //this is NOT really listen only mode but it isn't supported yet so for now...
+		Can0.begin(); //this is NOT really listen only mode but it isn't supported yet so for now...
+		Can0.setBaudRate(settings.CAN0Speed);
         if (SysSettings.CAN0EnablePin < 255)
         {
             pinMode(SysSettings.CAN0EnablePin, OUTPUT);
@@ -721,7 +722,8 @@ bool SerialConsole::handleFilterSet(uint8_t bus, uint8_t filter, char *values)
 	return true;
 }
 
-bool SerialConsole::handleCAN0Send(FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> &port, char *inputString)
+// bool SerialConsole::handleCAN0Send(FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> &port, char *inputString)
+bool SerialConsole::handleCANSend(FlexCAN_T4_Base &port, char *inputString)
 {
 	char *idTok = strtok(inputString, ",");
 	char *lenTok = strtok(NULL, ",");
@@ -752,37 +754,37 @@ bool SerialConsole::handleCAN0Send(FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> &po
 	//setLED(SysSettings.LED_CANTX, SysSettings.txToggle);
 	return true;
 }
-bool SerialConsole::handleCAN1Send(FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> &port, char *inputString)
-{
-	char *idTok = strtok(inputString, ",");
-	char *lenTok = strtok(NULL, ",");
-	char *dataTok;
-	CAN_message_t frame;
+// bool SerialConsole::handleCAN1Send(FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> &port, char *inputString)
+// {
+// 	char *idTok = strtok(inputString, ",");
+// 	char *lenTok = strtok(NULL, ",");
+// 	char *dataTok;
+// 	CAN_message_t frame;
 
-	if (!idTok) return false;
-	if (!lenTok) return false;
+// 	if (!idTok) return false;
+// 	if (!lenTok) return false;
 
-	int idVal = strtol(idTok, NULL, 0);
-	int lenVal = strtol(lenTok, NULL, 0);
+// 	int idVal = strtol(idTok, NULL, 0);
+// 	int lenVal = strtol(lenTok, NULL, 0);
 
-	for (int i = 0; i < lenVal; i++)
-	{
-		dataTok = strtok(NULL, ",");
-		if (!dataTok) return false;
-		frame.buf[i] = strtol(dataTok, NULL, 0);
-	}
+// 	for (int i = 0; i < lenVal; i++)
+// 	{
+// 		dataTok = strtok(NULL, ",");
+// 		if (!dataTok) return false;
+// 		frame.buf[i] = strtol(dataTok, NULL, 0);
+// 	}
 
-	//things seem good so try to send the frame.
-	frame.id = idVal;
-	if (idVal >= 0x7FF) frame.flags.extended = 1;
-	else frame.flags.extended = 0;
-	frame.len = lenVal;
-	port.write(frame);
-	Logger::console("Sending frame with id: 0x%x len: %i", frame.id, frame.len);
-	SysSettings.txToggle = !SysSettings.txToggle;
-	//setLED(SysSettings.LED_CANTX, SysSettings.txToggle);
-	return true;
-}
+// 	//things seem good so try to send the frame.
+// 	frame.id = idVal;
+// 	if (idVal >= 0x7FF) frame.flags.extended = 1;
+// 	else frame.flags.extended = 0;
+// 	frame.len = lenVal;
+// 	port.write(frame);
+// 	Logger::console("Sending frame with id: 0x%x len: %i", frame.id, frame.len);
+// 	SysSettings.txToggle = !SysSettings.txToggle;
+// 	//setLED(SysSettings.LED_CANTX, SysSettings.txToggle);
+// 	return true;
+// }
 
 unsigned int SerialConsole::parseHexCharacter(char chr)
 {
@@ -800,3 +802,4 @@ unsigned int SerialConsole::parseHexString(char *str, int length)
     for (int i = 0; i < length; i++) result += parseHexCharacter(str[i]) << (4 * (length - i - 1));
     return result;
 }
+
