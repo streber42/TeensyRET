@@ -138,6 +138,7 @@ void loadSettings()
 	Logger::setLoglevel((Logger::LogLevel)settings.logLevel);
 
 	SysSettings.SDCardInserted = false;
+    SysSettings.useSD = true;
 
 	//switch (settings.sysType) {
         
@@ -177,9 +178,10 @@ void setup()
 	Serial.flush();
 
     if (SysSettings.useSD) {	
-		if (!sd.begin()) 
+		if (!sd.begin(SdioConfig())) 
 		{
 			Logger::error("Could not initialize SDCard! No file logging will be possible!");
+            sd.printSdError(&Serial);
 		}
 		else SysSettings.SDCardInserted = true;
 		if (settings.autoStartLogging) {
@@ -547,9 +549,9 @@ void loop()
 
 	//if (!SysSettings.lawicelMode || SysSettings.lawicelAutoPoll || SysSettings.lawicelPollCounter > 0)
 	//{
-    Logger::debug("Can0.events");
-    Logger::debug("%d", Can0.events());
-    Logger::debug("~Can0.events");
+    // Logger::debug("Can0.events");
+    // Logger::debug("%d", Can0.events());
+    // Logger::debug("~Can0.events");
     if (Can0.read(incoming))
     {
         toggleRXLED();
@@ -560,9 +562,9 @@ void loop()
         //   if (digToggleSettings.enabled && (digToggleSettings.mode & 1) && (digToggleSettings.mode & 2)) processDigToggleFrame(incoming);
         //   //fwGotFrame(&incoming);
     }
-    Logger::debug("Can1.events");
-    Can1.events();
-    Logger::debug("~Can1.events");
+    // Logger::debug("Can1.events");
+    // Can1.events();
+    // Logger::debug("~Can1.events");
     if (Can1.read(incoming))
     {
         toggleRXLED();
