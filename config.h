@@ -149,8 +149,8 @@ extern DigitalCANToggleSettings digToggleSettings;
 #define EEPROM_ADDRESS  0
 #define EEPROM_VER		0x10
 
-#define CAN0_EN_PIN		2
-#define CAN1_EN_PIN		35
+#define CAN0_EN_PIN		255
+#define CAN1_EN_PIN		255
 #define BLE_RST         7
 #define BLE_DFU         8
 #define BLE_IRQ         9
