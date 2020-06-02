@@ -27,7 +27,6 @@
 #include "Logger.h"
 #include "config.h"
 #include <SdFat.h>
-#include <SD.h>
 
 
 Logger::LogLevel Logger::logLevel = Logger::Info;

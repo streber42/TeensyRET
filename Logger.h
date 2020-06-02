@@ -30,7 +30,6 @@
 #include <Arduino.h>
 #include <SdFat.h>
 #include <EEPROM.h>
-#include <SD.h>
 #include "config.h"
 
 
