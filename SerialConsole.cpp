@@ -321,7 +321,7 @@ void SerialConsole::handleConfigCmd() {
 			Logger::console("Setting CAN0 Baud Rate to %i", newValue);
 			settings.CAN0Speed = newValue;
 			Can0.begin();
-            Can0.setBaudRate(settings.CAN0Speed);
+			Can0.setBaudRate(settings.CAN0Speed);
 			writeEEPROM = true;
 		}
 		else Logger::console("Invalid baud rate! Enter a value 1 - 1000000");

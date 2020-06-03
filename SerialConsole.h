@@ -60,3 +60,4 @@ private:
 };
 
 #endif /* SERIALCONSOLE_H_ */
+

@@ -52,9 +52,6 @@ DigitalCANToggleSettings digToggleSettings;
 
 // file system on sdcard
 SdExFat sd;
-// SdFatSdio sd;
-// SdFs sd;
-// #define SD1_CONFIG SdSpiConfig(36, DEDICATED_SPI, SD_SCK_MHZ(18), &SPI1);
 SerialConsole console;
 
 bool digTogglePinState;
@@ -115,6 +112,7 @@ void loadSettings()
         if (settings.CAN0ListenOnly > 1) settings.CAN0ListenOnly = 0;
         if (settings.CAN1ListenOnly > 1) settings.CAN1ListenOnly = 0;
 	}
+
 	EEPROM.get(EEPROM_ADDRESS + 500, digToggleSettings);
 	if (digToggleSettings.mode == 255)
     {
@@ -141,7 +139,7 @@ void loadSettings()
         
 		//case 1:  
 			Logger::console("Running on Teensy Hardware");
-   		    SysSettings.CAN0EnablePin = 255;
+            SysSettings.CAN0EnablePin = 255;
 			SysSettings.CAN1EnablePin = 255;
 			SysSettings.LED_CANTX = 13; //We do have an LED at pin 13. Use it for both
 			SysSettings.LED_CANRX = 13; //RX and TX.
@@ -183,10 +181,8 @@ void setup()
     if (digToggleSettings.enabled)
     {
         Serial.println("Digital Toggle System Enabled");
-	Serial.flush();
         if (digToggleSettings.mode & 1) { //input CAN and output pin state mode
             Serial.println("In Output Mode");
-            Serial.flush();
             pinMode(digToggleSettings.pin, OUTPUT);
             if (digToggleSettings.mode & 0x80) {
                 digitalWrite(digToggleSettings.pin, LOW);
@@ -199,7 +195,6 @@ void setup()
         }
         else { //read pin and output CAN mode
             Serial.println("In Input Mode");
-	    Serial.flush();
             pinMode(digToggleSettings.pin, INPUT);
             digTogglePinCounter = 0;
             if (digToggleSettings.mode & 0x80) digTogglePinState = false;
@@ -257,7 +252,6 @@ void setup()
 	}
 	else {
         Serial.println("CAN1 disabled.");
-	Serial.flush();
         // Can1.reset();
     	}
     /*
@@ -282,7 +276,6 @@ void setup()
 	SysSettings.lawicelPollCounter = 0;
 
 	Serial.print("Done with init\n");
-	Serial.flush();
 	digitalWrite(BLINK_LED, HIGH);
 }
 
@@ -458,7 +451,7 @@ void sendFrameToFile(const CAN_message_t &in_frame, int whichBus)
 	}
 }
 
-void processDigToggleFrame(const CAN_message_t &in_frame)
+void processDigToggleFrame(CAN_message_t &in_frame)
 {
     CAN_message_t frame = in_frame;
     bool gotFrame = false;
@@ -931,7 +924,7 @@ void loop()
 			   break;
 		   case 3:
 			   build_out_frame.id |= in_byte << 24;
-			   if (build_out_frame.id & 1 << 31)
+			   if (build_out_frame.id & 1 << 31) 
 			   {
 				   build_out_frame.id &= 0x7FFFFFFF;
 				   build_out_frame.flags.extended = 1;

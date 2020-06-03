@@ -373,10 +373,6 @@ void Logger::log(LogLevel level, const char *format, va_list args)
         case Error:
             Serial.print("ERROR");
             break;
-			
-        case Off:
-            Serial.print("OFF");
-            break;
     }
 
     Serial.print(": ");
