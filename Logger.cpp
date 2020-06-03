@@ -240,11 +240,11 @@ void Logger::file(const char *message, ...)
 				continue;
 			}
 
-			// if (*message == 'l') {
-			// 	sprintf(buff, "%l", va_arg(args, long));
-			// 	buffPutString(buff);
-			// 	continue;
-			// }
+			if (*message == 'l') {
+				sprintf(buff, "%l", va_arg(args, long));
+				buffPutString(buff);
+				continue;
+			}
 
 			if (*message == 'c') {
 				buffPutChar(va_arg(args, int));
@@ -289,7 +289,7 @@ void Logger::fileRaw(uint8_t* buff, int sz)
 
 	if (!setupFile()) return;
 
-	for (int i=0; i < sz; i++) {
+	for (int i; i < sz; i++) {
 		buffPutChar(*buff++);
 	}
 }
@@ -374,9 +374,9 @@ void Logger::log(LogLevel level, const char *format, va_list args)
             Serial.print("ERROR");
             break;
 			
-		case Off:
-			Serial.print("OFF");
-			break;
+        case Off:
+            Serial.print("OFF");
+            break;
     }
 
     Serial.print(": ");

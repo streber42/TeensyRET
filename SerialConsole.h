@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <FlexCAN_T4.h>
 class SerialConsole {
 public:
-	SerialConsole();
+    SerialConsole();
 	void printMenu();
 	void rcvCharacter(uint8_t chr);
 
@@ -54,8 +54,6 @@ private:
 	void handleConfigCmd();
 	void handleLawicelCmd();
 	bool handleFilterSet(uint8_t bus, uint8_t filter, char *values);
-	// bool handleCAN0Send(FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> &port, char *inputString);
-	// bool handleCAN1Send(FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> &port, char *inputString);
 	bool handleCANSend(FlexCAN_T4_Base &port, char *inputString);
 	unsigned int parseHexCharacter(char chr);
 	unsigned int parseHexString(char *str, int length);

@@ -258,7 +258,7 @@ void SerialConsole::handleConfigCmd() {
 		return; //4 digit command, =, value is at least 6 characters
 	cmdBuffer[ptrBuffer] = 0; //make sure to null terminate
 	String cmdString = String();
-	// unsigned char whichEntry = '0';
+	unsigned char whichEntry = '0';
 	i = 0;
 
 	while (cmdBuffer[i] != '=' && i < ptrBuffer) {
@@ -285,7 +285,7 @@ void SerialConsole::handleConfigCmd() {
 		settings.CAN0_Enabled = newValue;
 		if (newValue == 1) {
             Can0.begin();
-			Can0.setBaudRate(settings.CAN0Speed);
+            Can0.setBaudRate(settings.CAN0Speed);
             if (SysSettings.CAN0EnablePin < 255) {
                 pinMode(SysSettings.CAN0EnablePin, OUTPUT);
                 digitalWrite(SysSettings.CAN0EnablePin, HIGH);
@@ -302,7 +302,7 @@ void SerialConsole::handleConfigCmd() {
 		Logger::console("Setting CAN1 Enabled to %i", newValue);
 		if (newValue == 1) {
             Can1.begin();
-			Can1.setBaudRate(settings.CAN1Speed);
+            Can1.setBaudRate(settings.CAN1Speed);
             if (SysSettings.CAN1EnablePin < 255)
             {
                 pinMode(SysSettings.CAN1EnablePin, OUTPUT);
@@ -321,7 +321,7 @@ void SerialConsole::handleConfigCmd() {
 			Logger::console("Setting CAN0 Baud Rate to %i", newValue);
 			settings.CAN0Speed = newValue;
 			Can0.begin();
-			Can0.setBaudRate(settings.CAN0Speed);
+            Can0.setBaudRate(settings.CAN0Speed);
 			writeEEPROM = true;
 		}
 		else Logger::console("Invalid baud rate! Enter a value 1 - 1000000");
@@ -330,7 +330,7 @@ void SerialConsole::handleConfigCmd() {
 		{
 			Logger::console("Setting CAN1 Baud Rate to %i", newValue);
 			settings.CAN1Speed = newValue;
-            Can1.begin();
+			Can1.begin();
 			Can1.setBaudRate(settings.CAN1Speed);
 			writeEEPROM = true;
 		}
@@ -613,7 +613,7 @@ void SerialConsole::handleConfigCmd() {
 LAWICEL single letter commands are now mixed in with the other commands here.
 */
 void SerialConsole::handleShortCmd() {
-	// uint8_t val;
+	uint8_t val;
 
 	switch (cmdBuffer[0]) {
 	case 'h':
@@ -722,7 +722,6 @@ bool SerialConsole::handleFilterSet(uint8_t bus, uint8_t filter, char *values)
 	return true;
 }
 
-// bool SerialConsole::handleCAN0Send(FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> &port, char *inputString)
 bool SerialConsole::handleCANSend(FlexCAN_T4_Base &port, char *inputString)
 {
 	char *idTok = strtok(inputString, ",");
@@ -754,37 +753,6 @@ bool SerialConsole::handleCANSend(FlexCAN_T4_Base &port, char *inputString)
 	//setLED(SysSettings.LED_CANTX, SysSettings.txToggle);
 	return true;
 }
-// bool SerialConsole::handleCAN1Send(FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> &port, char *inputString)
-// {
-// 	char *idTok = strtok(inputString, ",");
-// 	char *lenTok = strtok(NULL, ",");
-// 	char *dataTok;
-// 	CAN_message_t frame;
-
-// 	if (!idTok) return false;
-// 	if (!lenTok) return false;
-
-// 	int idVal = strtol(idTok, NULL, 0);
-// 	int lenVal = strtol(lenTok, NULL, 0);
-
-// 	for (int i = 0; i < lenVal; i++)
-// 	{
-// 		dataTok = strtok(NULL, ",");
-// 		if (!dataTok) return false;
-// 		frame.buf[i] = strtol(dataTok, NULL, 0);
-// 	}
-
-// 	//things seem good so try to send the frame.
-// 	frame.id = idVal;
-// 	if (idVal >= 0x7FF) frame.flags.extended = 1;
-// 	else frame.flags.extended = 0;
-// 	frame.len = lenVal;
-// 	port.write(frame);
-// 	Logger::console("Sending frame with id: 0x%x len: %i", frame.id, frame.len);
-// 	SysSettings.txToggle = !SysSettings.txToggle;
-// 	//setLED(SysSettings.LED_CANTX, SysSettings.txToggle);
-// 	return true;
-// }
 
 unsigned int SerialConsole::parseHexCharacter(char chr)
 {

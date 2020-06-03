@@ -64,9 +64,7 @@ uint8_t digTogglePinCounter;
 //there is only one checksum check for all of them so it's simple to do it all here.
 void loadSettings()
 {
-	Logger::console("Loading EEPROM");
 	EEPROM.get(EEPROM_ADDRESS, settings);
-	Logger::console("EEPROM loaded");
 
 	if (settings.version != EEPROM_VER) //if settings are not the current version then erase them and set defaults
 	{
@@ -110,15 +108,13 @@ void loadSettings()
 		settings.valid = 0; //not used right now
 		settings.CAN0ListenOnly = false;
 		settings.CAN1ListenOnly = false;
-		Logger::console("Done resetting to factory defaults");
-    		EEPROM.put(EEPROM_ADDRESS, settings);
+        EEPROM.put(EEPROM_ADDRESS, settings);
 	}
 	else {
 		Logger::console("Using stored values from EEPROM");
         if (settings.CAN0ListenOnly > 1) settings.CAN0ListenOnly = 0;
         if (settings.CAN1ListenOnly > 1) settings.CAN1ListenOnly = 0;
 	}
-	Logger::console("Stored settings");
 	EEPROM.get(EEPROM_ADDRESS + 500, digToggleSettings);
 	if (digToggleSettings.mode == 255)
     {
@@ -135,6 +131,7 @@ void loadSettings()
     {
         Logger::console("Using stored values for digital toggling system");
     }
+
 	Logger::setLoglevel((Logger::LogLevel)settings.logLevel);
 
 	SysSettings.SDCardInserted = false;
@@ -162,20 +159,11 @@ void setup()
 	delay(5000); //just for testing. Don't use in production
     pinMode(BLINK_LED, OUTPUT);
     digitalWrite(BLINK_LED, LOW);
-	delay(500);
-	digitalWrite(BLINK_LED, HIGH);
-	delay(1000);
-	digitalWrite(BLINK_LED, LOW);
 
     Serial.begin(115200);
-	Serial.println("Hello world!");
-	Logger::console("Hello world!");
 	Wire.begin();
 
 	loadSettings();
-	Serial.println("Hello settings!");
-	Logger::console("Hello settings!");
-	Serial.flush();
 
     if (SysSettings.useSD) {	
 		if (!sd.begin(SdioConfig())) 
@@ -191,9 +179,7 @@ void setup()
 	}
 
     Serial.print("Build number: ");
-    Serial.flush();
     Serial.println(CFG_BUILD_NUM);
-    Serial.flush();
     if (digToggleSettings.enabled)
     {
         Serial.println("Digital Toggle System Enabled");
@@ -223,8 +209,8 @@ void setup()
 
 	if (settings.CAN0_Enabled)
 	{
-		Serial.println("Init CAN0");
-	    Can0.begin();
+        Serial.println("Init CAN0");
+        Can0.begin();
         Can0.setBaudRate(settings.CAN0Speed);
         Can0.enableFIFO();
         Can0.mailboxStatus();
@@ -247,14 +233,14 @@ void setup()
 
         //TODO: apparently calling end while it isn't inialized actually locks it up
         // Can0.reset();
-        }
+    }
 	if (settings.CAN1_Enabled)
 	{
         Serial.println("Init CAN0");
         Can1.begin();
-	    Can1.setBaudRate(settings.CAN1Speed);
-		Can1.enableFIFO();
-		Can1.mailboxStatus();
+        Can1.setBaudRate(settings.CAN1Speed);
+        Can1.enableFIFO();
+        Can1.mailboxStatus();
         if (SysSettings.CAN1EnablePin < 255)
         {
             pinMode(SysSettings.CAN1EnablePin, OUTPUT);
@@ -463,8 +449,8 @@ void sendFrameToFile(const CAN_message_t &in_frame, int whichBus)
 
 		for (int c = 0; c < frame.len; c++)
 		{
-		sprintf((char *) buff, " %x", frame.buf[c]);
-		Logger::fileRaw(buff, strlen((char *)buff));
+            sprintf((char *) buff, " %x", frame.buf[c]);
+            Logger::fileRaw(buff, strlen((char *)buff));
 		}
 		buff[0] = '\r';
 		buff[1] = '\n';
@@ -549,30 +535,19 @@ void loop()
 
 	//if (!SysSettings.lawicelMode || SysSettings.lawicelAutoPoll || SysSettings.lawicelPollCounter > 0)
 	//{
-    // Logger::debug("Can0.events");
-    // Logger::debug("%d", Can0.events());
-    // Logger::debug("~Can0.events");
     if (Can0.read(incoming))
     {
         toggleRXLED();
-        if (isConnected)
-            sendFrameToUSB(incoming, 0);
-        if (SysSettings.logToFile)
-            sendFrameToFile(incoming, 0);
-        //   if (digToggleSettings.enabled && (digToggleSettings.mode & 1) && (digToggleSettings.mode & 2)) processDigToggleFrame(incoming);
-        //   //fwGotFrame(&incoming);
+        if (isConnected) sendFrameToUSB(incoming, 0);
+        if (SysSettings.logToFile) sendFrameToFile(incoming, 0);
+        if (digToggleSettings.enabled && (digToggleSettings.mode & 1) && (digToggleSettings.mode & 2)) processDigToggleFrame(incoming);
     }
-    // Logger::debug("Can1.events");
-    // Can1.events();
-    // Logger::debug("~Can1.events");
     if (Can1.read(incoming))
     {
         toggleRXLED();
-        if (isConnected)
-            sendFrameToUSB(incoming, 1);
-        if (SysSettings.logToFile)
-            sendFrameToFile(incoming, 1);
-        //   if (digToggleSettings.enablefd && (digToggleSettings.mode & 1) && (digToggleSettings.mode & 4)) processDigToggleFrame(incoming);
+        if (isConnected) sendFrameToUSB(incoming, 1);
+        if (SysSettings.logToFile) sendFrameToFile(incoming, 1);
+        if (digToggleSettings.enabled && (digToggleSettings.mode & 1) && (digToggleSettings.mode & 4)) processDigToggleFrame(incoming);
     }
 	if (SysSettings.lawicelPollCounter > 0) SysSettings.lawicelPollCounter--;
 	//}
